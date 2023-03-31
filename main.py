@@ -17,7 +17,7 @@ import re
 from collections import Counter
 from vncorenlp import VnCoreNLP
 import torchtext
-#from torchtext.data import TabularDataset, Field
+from torchtext.data import TabularDataset, Field
 #from torchtext.legacy import datasets
 from sklearn.model_selection import train_test_split
 import time
@@ -44,30 +44,30 @@ text_vi = 'cuốn sách này là của tôi. Của bạn đâu?'
 print(tokenize_en(text_en))
 print(tokenize_vi(text_vi))
 
-# source = Field(tokenize=tokenize_en, init_token='<sos>', eos_token='<eos>', lower=True)
-# target = Field(tokenize=tokenize_vi, init_token='<sos>', eos_token='<eos>', lower=True)
+source = Field(tokenize=tokenize_en, init_token='<sos>', eos_token='<eos>', lower=True)
+target = Field(tokenize=tokenize_vi, init_token='<sos>', eos_token='<eos>', lower=True)
 
-# fields = {"English": ("src", source), "Vietnamese": ("trg", target)}
+fields = {"English": ("src", source), "Vietnamese": ("trg", target)}
 
-# def create_raw_dataset():
-#     en_sents = open('english', "r", encoding="utf-8").read().splitlines()
-#     vi_sents = open('vietnamese', "r", encoding="utf-8").read().splitlines()
+def create_raw_dataset():
+    en_sents = open('english', "r", encoding="utf-8").read().splitlines()
+    vi_sents = open('vietnamese', "r", encoding="utf-8").read().splitlines()
 
-#     return {
-#         "English": [line for line in en_sents],
-#         "Vietnamese": [line for line in vi_sents],
-#     }
+    return {
+        "English": [line for line in en_sents],
+        "Vietnamese": [line for line in vi_sents],
+    }
 
-# raw_data = create_raw_dataset()
+raw_data = create_raw_dataset()
 
-# df = pd.DataFrame(raw_data, columns=["English", "Vietnamese"])
-# train, test = train_test_split(df, test_size=0.1)
-# train, val = train_test_split(train, test_size=0.125)
+df = pd.DataFrame(raw_data, columns=["English", "Vietnamese"])
+train, test = train_test_split(df, test_size=0.1)
+train, val = train_test_split(train, test_size=0.125)
 
-# train.to_json("train.json", orient="records", lines=True)
-# test.to_json("test.json", orient="records", lines=True)
-# val.to_json("val.json", orient="records", lines=True)
+train.to_json("train.json", orient="records", lines=True)
+test.to_json("test.json", orient="records", lines=True)
+val.to_json("val.json", orient="records", lines=True)
 
-# train_data, test_data, val_data = TabularDataset.splits(
-#     path="./", train="train.json", test="test.json", validation ="val.json", format="json", fields=fields
-# )
+train_data, test_data, val_data = TabularDataset.splits(
+    path="./", train="train.json", test="test.json", validation ="val.json", format="json", fields=fields
+)

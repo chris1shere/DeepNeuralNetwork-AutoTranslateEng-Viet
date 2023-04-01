@@ -1,73 +1,53 @@
 import os
+import string
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import torch
-from torch import nn, optim
-import torch.nn.functional as F
-from torch.utils.data import DataLoader, Dataset
-import torchvision.transforms as T
-from torch.nn.utils.rnn import pad_sequence
-from PIL import Image
-from tqdm import tqdm
-import spacy
-from spacy.tokenizer import Tokenizer
-from spacy.lang.en import English
-import re
-from collections import Counter
-from vncorenlp import VnCoreNLP
-import torchtext
-from torchtext.data import TabularDataset, Field
-#from torchtext.legacy import datasets
-from sklearn.model_selection import train_test_split
-import time
-import math
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.corpus import wordnet
+from nltk.stem import WordNetLemmatizer
+import json
 
-import random
-SEED = 2222
-random.seed(SEED)
-torch.manual_seed(SEED)
+path_to_english_file = 'english'
+path_to_vietnamese_file = 'vietnamese'
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-device
-spacy_en = spacy.load('en_core_web_sm')
-annotator = VnCoreNLP("VnCoreNLP-master/VnCoreNLP-1.1.1.jar", annotators="wseg", max_heap_size='-Xmx500m') 
+def get_wordnet_pos(treebank_tag):
+    if treebank_tag.startswith('J'):
+        return wordnet.ADJ
+    elif treebank_tag.startswith('V'):
+        return wordnet.VERB
+    elif treebank_tag.startswith('N'):
+        return wordnet.NOUN
+    elif treebank_tag.startswith('R'):
+        return wordnet.ADV
+    else:
+        return wordnet.NOUN
 
-from iteration_utilities import deepflatten
-def tokenize_en(text):
-    return [tok.text for tok in spacy_en.tokenizer(text)]
-def tokenize_vi(text):
-    return [tok for tok in deepflatten(annotator.tokenize(text), depth=1)]
+def preprocess_text(text):
+    text = text.lower()
+    text = text.translate(str.maketrans('', '', string.punctuation))
+    tokens = word_tokenize(text)
+    lemmatizer = WordNetLemmatizer()
+    pos_tags = nltk.pos_tag(tokens)
+    preprocessed_text = ""
+    for i in range(len(pos_tags)):
+        pos = get_wordnet_pos(pos_tags[i][1])
+        lemma = lemmatizer.lemmatize(pos_tags[i][0], pos)
+        preprocessed_text += lemma + " "
+    return preprocessed_text.strip()
 
-text_en = 'Please put the dustpan in the broom closet'
-text_vi = 'cuốn sách này là của tôi. Của bạn đâu?'
-print(tokenize_en(text_en))
-print(tokenize_vi(text_vi))
+english_sentences = []
+with open(path_to_english_file, 'r', encoding='utf8') as f:
+    for line in f:
+        english_sentences.append(preprocess_text(line.strip()))
 
-source = Field(tokenize=tokenize_en, init_token='<sos>', eos_token='<eos>', lower=True)
-target = Field(tokenize=tokenize_vi, init_token='<sos>', eos_token='<eos>', lower=True)
+vietnamese_sentences = []
+with open(path_to_vietnamese_file, 'r', encoding='utf8') as f:
+    for line in f:
+        vietnamese_sentences.append(preprocess_text(line.strip()))
 
-fields = {"English": ("src", source), "Vietnamese": ("trg", target)}
+# combine english and vietnamese sentences into a dictionary
+data = {'english': english_sentences, 'vietnamese': vietnamese_sentences}
 
-def create_raw_dataset():
-    en_sents = open('english', "r", encoding="utf-8").read().splitlines()
-    vi_sents = open('vietnamese', "r", encoding="utf-8").read().splitlines()
-
-    return {
-        "English": [line for line in en_sents],
-        "Vietnamese": [line for line in vi_sents],
-    }
-
-raw_data = create_raw_dataset()
-
-df = pd.DataFrame(raw_data, columns=["English", "Vietnamese"])
-train, test = train_test_split(df, test_size=0.1)
-train, val = train_test_split(train, test_size=0.125)
-
-train.to_json("train.json", orient="records", lines=True)
-test.to_json("test.json", orient="records", lines=True)
-val.to_json("val.json", orient="records", lines=True)
-
-train_data, test_data, val_data = TabularDataset.splits(
-    path="./", train="train.json", test="test.json", validation ="val.json", format="json", fields=fields
-)
+# open a file and write the data to it in JSON format
+with open('preprocessed_sentences.json', 'w') as f:
+    json.dump(data, f)
